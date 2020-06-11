@@ -9,7 +9,7 @@ stocks = pd.read_csv("input_format.csv")
 sect_constrains = pd.read_csv("section_cons.csv").to_dict()
 
 rules = {"stock_num":200,                      # pick exact 200 stocks
-         "tcost":0.005 * 0,                    # tcost 
+         "tcost":0.005 * 1,                    # tcost, set to 0 when setting up position
          "section":[sect_constrains, 0.01],    # expect value, tolerance
          "mv":[0.35, 0.02],                    # expect value, tolerance
          "trend":[0.05, 0.01]}                 # expect value, tolerance
