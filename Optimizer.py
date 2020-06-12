@@ -45,9 +45,9 @@ class Solver:
             for i, v in self.portfolio.max_position.items()
         }
         self.stock_num = rules["stock_num"]
-        self.section_constrain, self.sect_tol = rules["section"]
-        self.mv_constrain, self.mv_tol = rules["mv"]
-        self.trend_constrain, self.trend_tol = rules["trend"]
+        self.section_constrain, self.sect_tol, self.sect_enable = rules["section"]
+        self.mv_constrain, self.mv_tol, self.mv_enable = rules["mv"]
+        self.trend_constrain, self.trend_tol, self.trend_enable = rules["trend"]
         self.tcost = rules["tcost"]
         self.portfolio.scores_adj = (
             self.portfolio.df.scores +
@@ -68,55 +68,58 @@ class Solver:
         self.solver += lpSum(self.holdStatus) == self.stock_num, "Pick Stocks"
 
         # section
-        for sc in self.portfolio.sect_list:
-            self.solver += lpSum([
-                self.holdStatus[s] * self.portfolio.weights_tdy[s] *
-                self.is_sect(s, sc) for s in self.portfolio.stock_pool
-            ]) <= (self.section_constrain[sc] + self.sect_tol) * lpSum([
-                self.holdStatus[s] * self.portfolio.weights_tdy[s]
-                for s in self.portfolio.stock_pool
-            ])
-            self.solver += lpSum([
-                self.holdStatus[s] * self.portfolio.weights_tdy[s] *
-                self.is_sect(s, sc) for s in self.portfolio.stock_pool
-            ]) >= (self.section_constrain[sc] - self.sect_tol) * lpSum([
-                self.holdStatus[s] * self.portfolio.weights_tdy[s]
-                for s in self.portfolio.stock_pool
-            ])
+        if self.sect_enable:
+            for sc in self.portfolio.sect_list:
+                self.solver += lpSum([
+                    self.holdStatus[s] * self.portfolio.weights_tdy[s] *
+                    self.is_sect(s, sc) for s in self.portfolio.stock_pool
+                ]) <= (self.section_constrain[sc] + self.sect_tol) * lpSum([
+                    self.holdStatus[s] * self.portfolio.weights_tdy[s]
+                    for s in self.portfolio.stock_pool
+                ])
+                self.solver += lpSum([
+                    self.holdStatus[s] * self.portfolio.weights_tdy[s] *
+                    self.is_sect(s, sc) for s in self.portfolio.stock_pool
+                ]) >= (self.section_constrain[sc] - self.sect_tol) * lpSum([
+                    self.holdStatus[s] * self.portfolio.weights_tdy[s]
+                    for s in self.portfolio.stock_pool
+                ])
 
         # market value
-        self.solver += lpSum([
-            self.holdStatus[s] * self.portfolio.weights_tdy[s] *
-            self.portfolio.mv[s] for s in self.portfolio.stock_pool
-        ]) >= (self.mv_constrain - self.mv_tol) * lpSum([
-            self.holdStatus[s] * self.portfolio.weights_tdy[s]
-            for s in self.portfolio.stock_pool
-        ])
+        if self.mv_enable:
+            self.solver += lpSum([
+                self.holdStatus[s] * self.portfolio.weights_tdy[s] *
+                self.portfolio.mv[s] for s in self.portfolio.stock_pool
+            ]) >= (self.mv_constrain - self.mv_tol) * lpSum([
+                self.holdStatus[s] * self.portfolio.weights_tdy[s]
+                for s in self.portfolio.stock_pool
+            ])
 
-        self.solver += lpSum([
-            self.holdStatus[s] * self.portfolio.weights_tdy[s] *
-            self.portfolio.mv[s] for s in self.portfolio.stock_pool
-        ]) <= (self.mv_constrain + self.mv_tol) * lpSum([
-            self.holdStatus[s] * self.portfolio.weights_tdy[s]
-            for s in self.portfolio.stock_pool
-        ])
+            self.solver += lpSum([
+                self.holdStatus[s] * self.portfolio.weights_tdy[s] *
+                self.portfolio.mv[s] for s in self.portfolio.stock_pool
+            ]) <= (self.mv_constrain + self.mv_tol) * lpSum([
+                self.holdStatus[s] * self.portfolio.weights_tdy[s]
+                for s in self.portfolio.stock_pool
+            ])
 
         # trend
-        self.solver += lpSum([
-            self.holdStatus[s] * self.portfolio.weights_tdy[s] *
-            self.portfolio.trend[s] for s in self.portfolio.stock_pool
-        ]) >= (self.trend_constrain - self.trend_tol) * lpSum([
-            self.holdStatus[s] * self.portfolio.weights_tdy[s]
-            for s in self.portfolio.stock_pool
-        ])
+        if self.trend_enable:
+            self.solver += lpSum([
+                self.holdStatus[s] * self.portfolio.weights_tdy[s] *
+                self.portfolio.trend[s] for s in self.portfolio.stock_pool
+            ]) >= (self.trend_constrain - self.trend_tol) * lpSum([
+                self.holdStatus[s] * self.portfolio.weights_tdy[s]
+                for s in self.portfolio.stock_pool
+            ])
 
-        self.solver += lpSum([
-            self.holdStatus[s] * self.portfolio.weights_tdy[s] *
-            self.portfolio.trend[s] for s in self.portfolio.stock_pool
-        ]) <= (self.trend_constrain + self.trend_tol) * lpSum([
-            self.holdStatus[s] * self.portfolio.weights_tdy[s]
-            for s in self.portfolio.stock_pool
-        ])
+            self.solver += lpSum([
+                self.holdStatus[s] * self.portfolio.weights_tdy[s] *
+                self.portfolio.trend[s] for s in self.portfolio.stock_pool
+            ]) <= (self.trend_constrain + self.trend_tol) * lpSum([
+                self.holdStatus[s] * self.portfolio.weights_tdy[s]
+                for s in self.portfolio.stock_pool
+            ])
 
     def solve(self):
         self.add_obj_func()
@@ -160,8 +163,9 @@ class Solver:
         return sum([1 for s in self.portfolio.scores.values() if s > score
                     ]) / len(self.portfolio.scores.values())
 
-    def evaluate(self):
+    def evaluate(self, save_as = None):
 
+        log = open(save_as[:27] + "logs/" + save_as.split(".")[1] + ".txt", "w")
         ystd_score = sum([
             self.portfolio.scores.get(s, 0) *
             self.portfolio.weights_ystd.get(s, 0)
@@ -171,11 +175,20 @@ class Solver:
             self.portfolio.scores.get(s, 0) * self.hold_weights.get(s, 0)
             for s in self.hold_weights
         ])
+        
+        
+        
         print("[Before Adjust] Score: {:.6f}    Percentile: {:.4f}".format(
             ystd_score, self.score_rank(ystd_score)))
         print("[~After Adjust] Score: {:.6f}    Percentile: {:.4f}".format(
             tdy_score, self.score_rank(tdy_score)))
 
+        # 
+        print("[Before Adjust] Score: {:.6f}    Percentile: {:.4f}".format(
+            ystd_score, self.score_rank(ystd_score)), file=log)
+        print("[~After Adjust] Score: {:.6f}    Percentile: {:.4f}".format(
+            tdy_score, self.score_rank(tdy_score)), file=log)
+        
         ysd_holding = {
             k: v
             for k, v in self.portfolio.weights_ystd.items() if v > 0
@@ -194,8 +207,13 @@ class Solver:
                 self.hold_weights.get(s, 0) -
                 self.portfolio.weights_ystd.get(s, 0), 0) for s in adjust
         ])
+        
+        
         print("\n>> Turnover:    \n Buy in {:4f}   Adjust {:.4f}".format(
             buyin_tvr, adj_tvr))
+        
+        print("\n>> Turnover:    \n Buy in {:4f}   Adjust {:.4f}".format(
+            buyin_tvr, adj_tvr), file=log)
 
         mv_tdy = sum([
             self.portfolio.mv.get(s, 0) * self.hold_weights.get(s, 0)
@@ -206,10 +224,18 @@ class Solver:
             self.portfolio.weights_ystd.get(s, 0)
             for s in self.portfolio.stock_pool
         ])
+        
         print(
             "\n>> Market Value:\n Before {:4f}   After {:.4f}   Target {:.4f}   Δ {:7.4f} "
             .format(mv_ystd, mv_tdy, self.mv_constrain,
                     mv_tdy - self.mv_constrain))
+        
+        
+        print(
+            "\n>> Market Value:\n Before {:4f}   After {:.4f}   Target {:.4f}   Δ {:7.4f} "
+            .format(mv_ystd, mv_tdy, self.mv_constrain,
+                    mv_tdy - self.mv_constrain), file=log)
+        
 
         trend_tdy = sum([
             self.portfolio.trend.get(s, 0) * self.hold_weights.get(s, 0)
@@ -224,6 +250,11 @@ class Solver:
             "\n>> Trend:       \n Before {:4f}   After {:.4f}   Target {:.4f}   Δ {:7.4f}"
             .format(trend_ystd, trend_tdy, self.trend_constrain,
                     trend_tdy - self.trend_constrain))
+        
+        print(
+            "\n>> Trend:       \n Before {:4f}   After {:.4f}   Target {:.4f}   Δ {:7.4f}"
+            .format(trend_ystd, trend_tdy, self.trend_constrain,
+                    trend_tdy - self.trend_constrain), file=log)
 
         sect_exposure = pd.DataFrame({"before": self.portfolio.sect_weights})
         after_sec = {
@@ -242,29 +273,40 @@ class Solver:
         sect_exposure["Δ"] = sect_exposure["after"] - sect_exposure["target"]
 
         print("\nSection exposure:\n\n", sect_exposure)
-
-        print("\n\nNew buy in:\n")
+        print("\nSection exposure:\n\n", sect_exposure, file=log)
+        
+        print("\n\nNew buy in:\n", file=log)
         for i, s in enumerate(stock_in):
             print("  {:0>6}   {}% -> {:.2f}% {}".format(
                 s, 0, 100 * self.hold_weights.get(s, 0),
                 [" ", "*"][s in self.reach_max]),
-                  end=["    |   ", "\n"][(i + 1) % 3 == 0])
+                  end=["    |   ", "\n"][(i + 1) % 3 == 0], file=log)
 
-        print("\n\nSell:\n")
+        print("\n\nSell:\n", file=log)
         for i, s in enumerate(stock_out):
             print("  {:0>6}   {:.2f}% -> {}%".format(
                 s, 100 * self.portfolio.weights_ystd.get(s, 0), 0),
-                  end=["      |   ", "\n"][(i + 1) % 3 == 0])
+                  end=["      |   ", "\n"][(i + 1) % 3 == 0], file=log)
 
-        print("\n\nAdjust:\n")
+        print("\n\nAdjust:\n", file=log)
         for i, s in enumerate(adjust):
             print("  {:0>6}   {:.2f}% -> {:.2f}%".format(
                 s, 100 * self.portfolio.weights_ystd.get(s, 0),
                 100 * self.hold_weights.get(s, 0)),
-                  end=["    | ", "\n"][(i + 1) % 3 == 0])
+                  end=["    | ", "\n"][(i + 1) % 3 == 0], file=log)
 
         self.result = pd.Series(
             {s: self.hold_weights.get(s, 0)
              for s in tdy_holding},
             name="weights")
-        self.result.sort_index().to_csv("weights_tdy.csv")
+                    
+        self.result.index.name = "Symbol"
+        
+        if save_as:
+            self.result.sort_index().to_csv(save_as)
+        
+        log.close()
+        
+        return self.result.sort_index()
+        
+        
