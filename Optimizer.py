@@ -45,10 +45,12 @@ class Solver:
             for i, v in self.portfolio.max_position.items()
         }
         self.stock_num = rules["stock_num"]
-        self.section_constrain, self.sect_tol, self.sect_enable = rules["section"]
-        self.mv_constrain, self.mv_tol, self.mv_enable = rules["mv"]
-        self.trend_constrain, self.trend_tol, self.trend_enable = rules["trend"]
         self.tcost = rules["tcost"]
+        self.constrain_path, self.sect_tol, self.sect_enable = rules["section"].values()
+        self.section_constrain = (pd.read_csv(self.constrain_path).set_index("SectID")["Weight"]/100).round(5).to_dict()
+        self.mv_constrain, self.mv_tol, self.mv_enable = rules["mv"].values()
+        self.trend_constrain, self.trend_tol, self.trend_enable = rules["trend"].values()
+        
         self.portfolio.scores_adj = (
             self.portfolio.df.scores +
             (self.portfolio.df.weights_ystd > 0) * self.tcost).to_dict()
@@ -177,7 +179,7 @@ class Solver:
         ])
         
         
-        
+        print()
         print("[Before Adjust] Score: {:.6f}    Percentile: {:.4f}".format(
             ystd_score, self.score_rank(ystd_score)))
         print("[~After Adjust] Score: {:.6f}    Percentile: {:.4f}".format(
@@ -272,7 +274,12 @@ class Solver:
         ]
         sect_exposure["Δ"] = sect_exposure["after"] - sect_exposure["target"]
 
-        print("\nSection exposure:\n\n", sect_exposure)
+
+        
+        with pd.option_context('display.max_rows', 8):
+            print("\nSection exposure:\n\n", sect_exposure.sort_values(by="Δ", ascending=False))
+        
+        
         print("\nSection exposure:\n\n", sect_exposure, file=log)
         
         print("\n\nNew buy in:\n", file=log)
