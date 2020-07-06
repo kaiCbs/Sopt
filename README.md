@@ -1,4 +1,7 @@
+
+
 # StockOpt
+[Logo](resource/logo.png)
 
 The purpose of this package is to solve the portfolio optimization problem, which is essentially a mixed integer programming problem. Based on [pulp](https://pypi.org/project/PuLP/), we have achieved a rapid dynamic adjustment based on yesterday's position, which maximize the weighted alpha scores minus the transaction costs.
 
@@ -9,7 +12,7 @@ The purpose of this package is to solve the portfolio optimization problem, whic
 
 ```
 import yaml
-from aggregate import *
+from Aggregate import *
 from Optimizer import *
 
 rules = yaml.safe_load(open("constraints.yaml").read())

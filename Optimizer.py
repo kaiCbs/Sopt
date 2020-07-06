@@ -10,9 +10,11 @@ logs_save_path = "/mnt/shared/public/for_kai/stockOpt/logs/"
 
 class Portfolio:
     def __init__(self, df, parameter):
+        df = df.copy()
+        df.index = [int(x.split(".")[0]) for x in df.index]
         mapping = {k:v for k,v in parameter.alias.to_dict().items() if not pd.isnull(v)}
         df.columns = [mapping.get(c, c) for c in df.columns]      
-        self.scores = df.scores.to_dict()
+        self.scores = (df.scores - df.scores.min()).to_dict()
         self.weights_ystd = df.weights_ystd.to_dict()
         self.stock_pool = df.index
         
@@ -21,7 +23,7 @@ class Portfolio:
         tcost_base = parameter.set_index("alias").val.to_dict()["tcost_base"]
         
         self.max_position = df.Max.to_dict()
-        self.scores_adj = (df.scores + (df.weights_ystd > 0) * (tcost_base + tcost_factor * tcost_enable * df.tcost)).to_dict()
+        self.scores_adj = (df.scores - df.scores.min() + (df.weights_ystd > 0) * (tcost_base + tcost_factor * tcost_enable * df.tcost)).to_dict()
         self.threshold = parameter.set_index("alias").val.to_dict()["threshold"]
         self.weights_tdy = self.assign()
         
@@ -92,7 +94,7 @@ class Solver:
     def add_obj_func(self):
         self.solver += lpSum([
             self.holdStatus[s] * self.portfolio.weights_tdy[s] *
-            self.portfolio.scores_adj[s] for s in self.portfolio.stock_pool
+            self.portfolio.scores_adj[s] for s in self.portfolio.stock_pool 
         ]), "max alpha score"
 
         # industry
@@ -146,14 +148,15 @@ class Solver:
                 ]), "{} upper bound".format(var)
 
 
-    def solve(self):
+    def solve(self, time_limit = 30):
         self.add_obj_func()
         self.add_constrains()
-        self.solver.solve()
+        self.solver.solve(PULP_CBC_CMD(maxSeconds=time_limit, msg=1, fracGap=0))
         print("Status:", LpStatus[self.solver.status])
         self.weights_normalize()
         if self.trim_enable:
             self.trim()
+
 
     def weights_normalize(self):
         weights_raw = {
@@ -169,38 +172,70 @@ class Solver:
             for k, v in w.items()
             if v >= self.portfolio.max_position.get(k, float("inf"))
         }
+        
         reach_min = {
         }  # {k:min_limit.get(k, float("-inf")) for k,v in w.items() if v<min_limit.get(k, float("-inf"))}
-        normal = {
-            k: v
-            for k, v in w.items() if k not in reach_max and k not in reach_min
-        }
-        normal = {
-            k: (1 - sum(reach_min.values()) - sum(reach_max.values())) * v /
-            sum(normal.values())
-            for k, v in w.items() if k not in reach_max and k not in reach_min
-        }
-        normal.update(reach_max)
-        normal.update(reach_min)
+        
+        fmax, fmin = reach_max, reach_min
+        
+        while len(fmax) or len(fmin):
+            reach_max, reach_min = {
+                k: self.portfolio.max_position.get(k, float("inf"))
+                for k, v in w.items()
+                if v >= self.portfolio.max_position.get(k, float("inf"))
+            }, {}
+                      
+            normal = {
+                k: v
+                for k, v in w.items() if k not in reach_max and k not in reach_min
+            }
+            normal = {
+                k: (1 - sum(reach_min.values()) - sum(reach_max.values())) * v /
+                sum(normal.values())
+                for k, v in w.items() if k not in reach_max and k not in reach_min
+            }
+            
+            normal.update(reach_max)
+            normal.update(reach_min)
+            
+            w = normal
+            
+            fmax, fmin = {
+                k: self.portfolio.max_position.get(k, float("inf"))
+                for k, v in w.items()
+                if v > self.portfolio.max_position.get(k, float("inf"))
+            }, {}   
+            
+        
         self.reach_max = reach_max
         self.hold_weights = normal
-        # return normal
-
+        
         
         
     
     def trim(self):
         self.w_trim = {}
         for s in self.hold_weights:
-            if abs(self.hold_weights[s]-self.portfolio.weights_ystd[s]) < self.trim_tol:
+            if s in self.reach_max:
+                self.w_trim[s] = self.reach_max[s]
+            elif abs(self.hold_weights[s]-self.portfolio.weights_ystd[s]) < self.trim_tol:
                 self.w_trim[s] = self.portfolio.weights_ystd[s]
+        
+        if len(self.w_trim) == len(self.hold_weights):
+            print("Total position might not be 100%")
+            self.hold_weights = self.w_trim
+            return 
+        
+        
         
         disfac = (1-sum(self.w_trim.values())) / sum(
                   [self.hold_weights[s] for s in self.hold_weights if s not in self.w_trim]) 
 
+
         for s in self.hold_weights:
             if s not in self.w_trim:
                 self.w_trim[s] = self.hold_weights[s] * disfac
+                
         self.hold_weights = self.w_trim
 
     def score_rank(self, score):
@@ -373,8 +408,16 @@ class Solver:
         return self.result.sort_index()
 
     
-def execute(stock, para, save_as=None):
+def execute(stock, para, time_limit = 30, save_as=None):
     p = Portfolio(stock, para)
     solver = Solver(p)
-    solver.solve()
+    solver.solve(time_limit)
     return solver.evaluate(save_as)
+
+    
+def test(stock, para, save_as=None):
+    print(stock.index[0:4])
+    print(stock.head(3))
+    print(para.index)
+    print(para.head(3))
+    return 
