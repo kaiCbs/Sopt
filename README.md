@@ -1,7 +1,7 @@
 ![Logo](resource/logo.png)
 
 # Stock Optimizer 1.0
-[![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
+[![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/kaiCbs/StockOpt/blob/master/README.md)
 
 ## Table of Contents
 
@@ -25,99 +25,51 @@ The purpose of this package is to solve the portfolio optimization problem, whic
 ## Usage
 
 ```
-import yaml
-from Aggregate import *
 from Optimizer import *
+para = pd.read_csv("parameters.csv", index_col=0) 
+stock = pd.read_csv("input_example.csv", index_col=0)
 
-rules = yaml.safe_load(open("constraints.yaml").read())
-         
-for n, date in enumerate(SIM_DATES):
-    stocks = genInputSimple(date)
-    pool = Portfolio(stocks)
-    solver = Solver(pool, rules=rules)
-    print(">> Processing {} ...\n".format(date))
-    %time solver.solve()
-    save_path = os.path.join(foldpath, "weight", "Weight.{}.csv".format(date))
-    solver.evaluate(save_as = save_path)
-    print("\n" + "="* 55, "\n\n")
+# solve the optimization problem
+weights = execute(stock, para, time_limit=5)  
 ```
 
-Which will give the trading instructions:
+Which will return the optimal weights:
 
 ```
->> Processing 20200401 ...
-
 Status: Optimal
-CPU times: user 3.28 s, sys: 63.7 ms, total: 3.34 s
-Wall time: 6.63 s
 
-[Before Adjust] Score: 0.000009    Percentile: 0.5299
-[~After Adjust] Score: 0.002125    Percentile: 0.0686
+[Before Adjust] Score: 0.038014    Percentile: 0.2604
+[~After Adjust] Score: 0.039680    Percentile: 0.1207
+
+In:116	 Out:61	 Adjust:130	
 
 >> Turnover:    
- Buy in 0.673316   Adjust 0.0570
+ Buy in  0.4160   Adjust 0.0028   Total 0.4188
 
->> Market Value:
- Before 0.356444   After 0.3968   Target 0.3200   Δ  0.0768 
+>> market_value:
+ Before  0.7840   After 0.7597   Target 0.8000   Δ -0.0403 
 
->> Trend:       
- Before 0.043475   After 0.0301   Target 0.0500   Δ -0.0199
+>> trend:
+ Before  0.6159   After 0.5826   Target 0.8000   Δ -0.2174 
 
-Section exposure:
+>> holders:
+ Before  0.7274   After 0.6891   Target 0.8000   Δ -0.1109 
 
-              before     after   target         Δ
-sect                                            
-801080.SI  0.114026  0.176908  0.11728  0.059628
-801750.SI  0.087057  0.136540  0.08575  0.050790
-801770.SI  0.049779  0.063462  0.02498  0.038482
-801760.SI  0.038560  0.089871  0.05414  0.035731
-...             ...       ...      ...       ...
-801170.SI  0.022181  0.000000  0.03111 -0.031110
-801790.SI  0.041160  0.002816  0.03734 -0.034524
-801180.SI  0.024516  0.000000  0.03521 -0.035210
-801150.SI  0.101028  0.075629  0.12211 -0.046481
+>> sector:
 
-[28 rows x 4 columns]
-
-======================================================= 
-
-
->> Processing 20200402 ...
-
-Status: Optimal
-CPU times: user 3.6 s, sys: 27.8 ms, total: 3.63 s
-Wall time: 7.99 s
-
-[Before Adjust] Score: 0.001510    Percentile: 0.1082
-[~After Adjust] Score: 0.001708    Percentile: 0.0736
-
->> Turnover:    
- Buy in 0.127055   Adjust 0.0574
-
->> Market Value:
- Before 0.396790   After 0.3932   Target 0.3200   Δ  0.0732 
-
->> Trend:       
- Before 0.030103   After 0.0317   Target 0.0500   Δ -0.0183
-
-Section exposure:
-
-              before     after   target         Δ
-sect                                            
-801080.SI  0.176908  0.180074  0.11728  0.062794
-801750.SI  0.136540  0.136587  0.08575  0.050837
-801760.SI  0.089871  0.094734  0.05414  0.040594
-801770.SI  0.063462  0.063123  0.02498  0.038143
-...             ...       ...      ...       ...
-801170.SI  0.000000  0.000000  0.03111 -0.031110
-801160.SI  0.002158  0.000000  0.03180 -0.031800
-801790.SI  0.002816  0.004349  0.03734 -0.032991
-801180.SI  0.000000  0.000000  0.03521 -0.035210
+              before     after    target         Δ
+sector                                           
+801080.SI  0.110066  0.134175  0.068116  0.066059
+801050.SI  0.078530  0.068918  0.040184  0.028734
+801790.SI  0.012024  0.044847  0.024875  0.019972
+801780.SI  0.000000  0.024907  0.007659  0.017247
+...             ...       ...       ...       ...
+801200.SI  0.011622  0.015900  0.031879 -0.015979
+801180.SI  0.040183  0.040114  0.057571 -0.017457
+801040.SI  0.001627  0.001373  0.023442 -0.022069
+801170.SI  0.015564  0.012755  0.038993 -0.026237
 
 [28 rows x 4 columns]
-
-======================================================= 
-
 ...
 ```
 
