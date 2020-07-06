@@ -22,10 +22,10 @@ The purpose of this package is to solve the portfolio optimization problem, whic
 ## Install
 
 
-You can just download the source code from github:
+Download the source code from github:
 
-    $ git clone git://github.com/rmccue/Requests.git
-
+    $ git clone git@github.com:kaiCbs/StockOpt.git
+    
 ## Usage
 
 ```
