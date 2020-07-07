@@ -17,8 +17,6 @@
 The purpose of this package is to solve the portfolio optimization problem, which is essentially a mixed integer programming problem. Based on [pulp](https://pypi.org/project/PuLP/), we have achieved a rapid dynamic adjustment based on yesterday's position, which maximize the weighted alpha scores minus the transaction costs.
 
 
-`aggregate` module aims to format data input, this we can retrieve a comprehensive data frame that is valid for the Solver by just providing the date. Of course, you need to set everything up, like the folders contain the raw data etc.
-
 ## Install
 
 
@@ -77,7 +75,7 @@ sector
 ...
 ```
 
-For detailed simulation results, it will also generate a log file that contains the weight changes of all target stocks.
+For detailed simulation results, it will also generate a [log file](resource/Fri_Jul_3_2020.log) that contains the weight changes of all target stocks.
 
 
 ## Maintainers
