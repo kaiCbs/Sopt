@@ -1,4 +1,4 @@
-![Logo](resource/logo.png)
+![Logo](resource/sopt.png)
 
 # Stock Optimizer 1.0
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/kaiCbs/StockOpt/blob/master/README.md)
