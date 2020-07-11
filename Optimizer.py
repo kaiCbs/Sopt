@@ -215,7 +215,7 @@ class Solver:
     def solve(self, time_limit=30):
         self.add_obj_func()
         self.add_constrains()
-        self.solver.solve(PULP_CBC_CMD(maxSeconds=time_limit, msg=1, fracGap=0))
+        self.solver.solve(PULP_CBC_CMD(timeLimit=time_limit, msg=1, fracGap=0))
         print("Status:", LpStatus[self.solver.status])
         self.weights_normalize()
         if self.trim_enable:
